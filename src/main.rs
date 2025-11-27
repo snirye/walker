@@ -1,6 +1,7 @@
 mod config;
 mod data;
 mod keybinds;
+mod keyboard_layouts;
 mod preview;
 mod protos;
 mod providers;
