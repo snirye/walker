@@ -95,17 +95,40 @@ fn sort_items_fuzzy(query: &str) {
                 score_b.cmp(&score_a)
             });
         } else {
-            let texts = items
+            // Generate layout variants of the query for cross-layout fuzzy matching.
+            // This allows queries typed in Hebrew layout to match English items.
+            let variants = crate::keyboard_layouts::layout_variants(query);
+
+            let texts: Vec<String> = items
                 .iter()
                 .map(QueryResponseObject::response)
                 .map(|response| response.item)
                 .filter_map(MessageField::into_option)
-                .map(|item| item.text);
+                .map(|item| item.text)
+                .collect();
 
             let mut matcher = Matcher::new(Config::DEFAULT.match_paths());
-            let pattern = Pattern::parse(query, CaseMatching::Ignore, Normalization::Smart);
-            let matches: Vec<(String, u32)> = pattern.match_list(texts, &mut matcher);
-            let score_map: HashMap<String, u32> = HashMap::from_iter(matches);
+
+            // For each variant, compute matches and build a combined score map
+            // keeping the best score for each item across all variants.
+            let mut score_map: HashMap<String, u32> = HashMap::new();
+
+            for variant in &variants {
+                let pattern = Pattern::parse(variant, CaseMatching::Ignore, Normalization::Smart);
+                // Use iter() to avoid cloning strings on each iteration
+                let matches: Vec<(&String, u32)> = pattern.match_list(texts.iter(), &mut matcher);
+
+                for (text, score) in matches {
+                    score_map
+                        .entry(text.clone())
+                        .and_modify(|existing| {
+                            if score > *existing {
+                                *existing = score;
+                            }
+                        })
+                        .or_insert(score);
+                }
+            }
 
             items.sort_by(|a, b| {
                 let ra = a.response();
