@@ -115,12 +115,12 @@ fn sort_items_fuzzy(query: &str) {
 
             for variant in &variants {
                 let pattern = Pattern::parse(variant, CaseMatching::Ignore, Normalization::Smart);
-                let matches: Vec<(String, u32)> =
-                    pattern.match_list(texts.iter().cloned(), &mut matcher);
+                // Use iter() to avoid cloning strings on each iteration
+                let matches: Vec<(&String, u32)> = pattern.match_list(texts.iter(), &mut matcher);
 
                 for (text, score) in matches {
                     score_map
-                        .entry(text)
+                        .entry(text.clone())
                         .and_modify(|existing| {
                             if score > *existing {
                                 *existing = score;

@@ -5,6 +5,11 @@
 /// supports Hebrew → English QWERTY mapping. The implementation is extendable for
 /// other layout pairs in the future.
 use std::collections::HashMap;
+use std::sync::OnceLock;
+
+/// Static cache for the Hebrew to English keyboard mapping.
+/// Initialized once on first use for performance.
+static HEBREW_TO_ENGLISH_MAP: OnceLock<HashMap<char, char>> = OnceLock::new();
 
 /// Returns a list of layout variants for the given query.
 ///
@@ -37,7 +42,7 @@ pub fn layout_variants(query: &str) -> Vec<String> {
 /// Maps Hebrew characters to their corresponding English characters based on
 /// physical key positions on a standard keyboard layout.
 fn generate_hebrew_to_english_variant(query: &str) -> String {
-    let mapping = hebrew_to_english_map();
+    let mapping = HEBREW_TO_ENGLISH_MAP.get_or_init(create_hebrew_to_english_map);
 
     query
         .chars()
@@ -45,13 +50,13 @@ fn generate_hebrew_to_english_variant(query: &str) -> String {
         .collect()
 }
 
-/// Returns a mapping from Hebrew characters to English QWERTY characters.
+/// Creates the Hebrew to English QWERTY character mapping.
 ///
 /// The mapping is based on physical key positions - typing in Hebrew mode on a
 /// QWERTY keyboard produces Hebrew characters at certain positions, and this map
 /// reverses that to find what English character would be produced at the same
 /// physical key.
-fn hebrew_to_english_map() -> HashMap<char, char> {
+fn create_hebrew_to_english_map() -> HashMap<char, char> {
     // Hebrew keyboard layout mapped to QWERTY positions
     // This maps Hebrew characters to the English characters on the same physical keys
     let pairs: &[(char, char)] = &[
